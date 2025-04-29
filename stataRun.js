@@ -54,15 +54,7 @@ function activate(context) {
         if (editor){
             let code = editor.document.getText()
             if (code.length > 0){
-                // If document is unsaved, then save temp file and run the do-file
-                if (editor.document.isUntitled){
-                    saveToFile(code)
-                }
-                // Else just run the do-file
-                else {
-                    var cwd = editor.document.uri.fsPath;
-                    sendCode.send('do `"' + cwd + '"\'')
-                }
+                saveToFile(code)
             }
             else {
                 ShowError()

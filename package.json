@@ -1,191 +1,195 @@
 {
-    "name": "stataRun",
-    "icon": "images/icon.png",
-    "displayName": "stataRun",
-    "description": "Run Stata Code from vsCode",
-    "version": "2.0.1",
-    "publisher": "Yeaoh",
-    "engines": {
-        "vscode": "^1.25.0"
-    },
-    "categories": [
-        "Other"
-    ],
-    "activationEvents": [
-        "onCommand:stataRun.runAll",
-        "onCommand:stataRun.runSelection",
-        "onCommand:stataRun.runCurrent",
-        "onCommand:stataRun.runDown",
-        "onCommand:stataRun.runFront"
-    ],
-    "main": "./stataRun.js",
-    "contributes": {
-        "commands": [
-            {
-                "command": "stataRun.runAll",
-                "title": "stataRun: All Lines"
-            },
-            {
-                "command": "stataRun.runSelection",
-                "title": "stataRun: Selection"
-            },
-            {
-                "command": "stataRun.runCurrent",
-                "title": "stataRun: Current line"
-            },
-            {
-                "command": "stataRun.runDown",
-                "title": "stataRun: Downward Lines"
-            },
-            {
-                "command": "stataRun.runFront",
-                "title": "stataRun: Frontward Lines"
-            }
-        ],
-        "configuration": [
-            {
-                "type": "object",
-                "title": "stataRun",
-                "properties": {
-                    "stataRun.stataPath": {
-                        "type": "string",
-                        "default": "C:\\Program Files (x86)\\Stata15\\StataSE-64.exe",
-                        "description": "Absolute path to Stata executable. Only applicable for Windows."
-                    },
-                    "stataRun.whichApp": {
-                        "type": "string",
-                        "enum": [
-                            "stataMP",
-                            "stataIC",
-                            "stataSE",
-                            "xquartz"
-                        ],
-                        "default": "stataSE",
-                        "description": "Which application to send code to. Only applicable for MacOS."
-                    },
-                    "stataRun.advancePosition": {
-                        "type": "boolean",
-                        "default": "false",
-                        "description": "Cursor advances to the next line after sending the current line when there is no selection."
-                    },
-                    "stataRun.skipComments": {
-                        "type": "boolean",
-                        "default": "true",
-                        "description": "When 'advancePosition' is true, skip lines that contain only comments"
-                    },
-                    "stataRun.focusWindow": {
-                        "type": "boolean",
-                        "default": "true",
-                        "description": "After code is sent, bring focus to where it was sent"
-                    },
-                    "stataRun.pasteSpeed": {
-                        "type": "number",
-                        "minimum": "1.0",
-                        "maximum": "10",
-                        "default": "true",
-                        "description": " This is only applicable for XQuartz. This value changes the amount of time the program waits between switching to the XQuartz window, pasting code, and sending enter'. The only way to send code to XQuartz is to use the clipboard, and the responsiveness of sending code will depend on the speed of your internet connection. If the copy-pasting isn't working, try increasing the value. Decreasing the value will run your code faster. Value must be between 0.1 and 10."
-                    },
-                    "stataRun.vscodeTerminal": {
-                        "type": "boolean",
-                        "default": "false",
-                        "description": "stataRun sends lines to built-in VS Code terminal window"
-                    },
-                    "stataRun.vscodeTerminalBin": {
-                        "type": "string",
-                        "default": "stata-se",
-                        "description": "Command to run when a terminal window is created"
-                    }
-                }
-            }
-        ],
-        "keybindings": [
-            {
-                "key": "shift+ctrl+a",
-                "mac": "shift+cmd+a",
-                "command": "stataRun.runAll",
-                "when": "editorTextFocus"
-            },
-            {
-                "key": "shift+ctl+s",
-                "mac": "shift+cmd+s",
-                "command": "stataRun.runSelection",
-                "when": "editorTextFocus"
-            },
-            {
-                "key": "shift+ctl+c",
-                "mac": "shift+cmd+c",
-                "command": "stataRun.runCurrent",
-                "when": "editorTextFocus"
-            },
-            {
-                "key": "shift+ctl+d",
-                "mac": "shift+cmd+d",
-                "command": "stataRun.runDown",
-                "when": "editorTextFocus"
-            },
-            {
-                "key": "shift+ctl+f",
-                "mac": "shift+cmd+f",
-                "command": "stataRun.runFront",
-                "when": "editorTextFocus"
-            }
-        ],
-        "menus": {
-            "editor/context": [
-                {
-                    "when": "resourceLangId == stata",
-                    "command": "stataRun.runAll",
-                    "group": "stataRun"
-                },
-                {
-                    "when": "resourceLangId == stata",
-                    "command": "stataRun.runSelection",
-                    "group": "stataRun"
-                },
-                {
-                    "when": "resourceLangId == stata",
-                    "command": "stataRun.runCurrent",
-                    "group": "stataRun"
-                },
-                {
-                    "when": "resourceLangId == stata",
-                    "command": "stataRun.runDown",
-                    "group": "stataRun"
-                },
-                {
-                    "when": "resourceLangId == stata",
-                    "command": "stataRun.runFront",
-                    "group": "stataRun"
-                }
-            ]
-        }
-    },
-    "scripts": {
-        "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "node ./node_modules/vscode/bin/test"
-    },
-    "devDependencies": {
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^7.0.43",
-        "eslint": "^4.19.1",
-        "vscode": "^1.1.6"
-    },
-    "dependencies": {
-        "delay": "^2.0.0",
-        "escape-string-applescript": "^2.0.0",
-        "path": "0.12.7",
-        "run-applescript": "^3.2.0"
-    },
-    "optionalDependencies": {
-        "winax": "1.0.13"
-    },
-    "repository": "https://github.com/poidstotal/stataRun",
-    "bugs": {
-        "url": "https://github.com/poidstotal/stataRun/issues"
-    },
-    "keywords": [
-        "Stata",
-        "stataRun"
-    ],
-    "license": "MIT"
+	"name": "stataRun",
+	"icon": "images/icon.png",
+	"displayName": "stataRun",
+	"description": "Run Stata Code from vsCode",
+	"version": "2.0.3",
+	"publisher": "Yeaoh",
+	"engines": {
+		"vscode": "^1.25.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:stataRun.runAll",
+		"onCommand:stataRun.runSelection",
+		"onCommand:stataRun.runCurrent",
+		"onCommand:stataRun.runDown",
+		"onCommand:stataRun.runFront"
+	],
+	"main": "./stataRun.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "stataRun.runAll",
+				"title": "stataRun: All Lines"
+			},
+			{
+				"command": "stataRun.runSelection",
+				"title": "stataRun: Selection"
+			},
+			{
+				"command": "stataRun.runCurrent",
+				"title": "stataRun: Current line"
+			},
+			{
+				"command": "stataRun.runDown",
+				"title": "stataRun: Downward Lines"
+			},
+			{
+				"command": "stataRun.runFront",
+				"title": "stataRun: Frontward Lines"
+			}
+		],
+		"configuration": [
+			{
+				"type": "object",
+				"title": "stataRun",
+				"properties": {
+					"stataRun.stataPath": {
+						"type": "string",
+						"default": "C:\\Program Files (x86)\\Stata15\\StataSE-64.exe",
+						"description": "Absolute path to Stata executable. Only applicable for Windows."
+					},
+					"stataRun.whichApp": {
+						"type": "string",
+						"enum": [
+							"stataMP",
+							"stataIC",
+							"stataSE",
+							"xquartz"
+						],
+						"default": "stataSE",
+						"description": "Which application to send code to. Only applicable for MacOS."
+					},
+					"stataRun.advancePosition": {
+						"type": "boolean",
+						"default": "false",
+						"description": "Cursor advances to the next line after sending the current line when there is no selection."
+					},
+					"stataRun.skipComments": {
+						"type": "boolean",
+						"default": "true",
+						"description": "When 'advancePosition' is true, skip lines that contain only comments"
+					},
+					"stataRun.focusWindow": {
+						"type": "boolean",
+						"default": "true",
+						"description": "After code is sent, bring focus to where it was sent"
+					},
+					"stataRun.pasteSpeed": {
+						"type": "number",
+						"minimum": "1.0",
+						"maximum": "10",
+						"default": "true",
+						"description": " This is only applicable for XQuartz. This value changes the amount of time the program waits between switching to the XQuartz window, pasting code, and sending enter'. The only way to send code to XQuartz is to use the clipboard, and the responsiveness of sending code will depend on the speed of your internet connection. If the copy-pasting isn't working, try increasing the value. Decreasing the value will run your code faster. Value must be between 0.1 and 10."
+					}
+				}
+			}
+		],
+		"keybindings": [
+			{
+				"key": "shift+ctrl+a",
+				"mac": "shift+cmd+a",
+				"command": "stataRun.runAll",
+				"when": "editorTextFocus"
+			},
+			{
+				"key": "shift+ctl+s",
+				"mac": "shift+cmd+s",
+				"command": "stataRun.runSelection",
+				"when": "editorTextFocus"
+			},
+			{
+				"key": "shift+ctl+c",
+				"mac": "shift+cmd+c",
+				"command": "stataRun.runCurrent",
+				"when": "editorTextFocus"
+			},
+			{
+				"key": "shift+ctl+d",
+				"mac": "shift+cmd+d",
+				"command": "stataRun.runDown",
+				"when": "editorTextFocus"
+			},
+			{
+				"key": "shift+ctl+f",
+				"mac": "shift+cmd+f",
+				"command": "stataRun.runFront",
+				"when": "editorTextFocus"
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"when": "resourceLangId == stata",
+					"command": "stataRun.runAll",
+					"group": "stataRun"
+				},
+				{
+					"when": "resourceLangId == stata",
+					"command": "stataRun.runSelection",
+					"group": "stataRun"
+				},
+				{
+					"when": "resourceLangId == stata",
+					"command": "stataRun.runCurrent",
+					"group": "stataRun"
+				},
+				{
+					"when": "resourceLangId == stata",
+					"command": "stataRun.runDown",
+					"group": "stataRun"
+				},
+				{
+					"when": "resourceLangId == stata",
+					"command": "stataRun.runFront",
+					"group": "stataRun"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"test": "node ./node_modules/vscode/bin/test"
+	},
+	"devDependencies": {
+		"@types/mocha": "^2.2.42",
+		"@types/node": "^7.0.43",
+		"eslint": "^4.19.1",
+		"vscode": "^1.1.6"
+	},
+	"dependencies": {
+		"delay": "^2.0.0",
+		"escape-string-applescript": "^2.0.0",
+		"path": "0.12.7",
+		"run-applescript": "^3.2.0"
+	},
+	"optionalDependencies": {
+		"winax": "1.0.13"
+	},
+	"repository": "https://github.com/poidstotal/stataRun",
+	"bugs": {
+		"url": "https://github.com/poidstotal/stataRun/issues"
+	},
+	"keywords": [
+		"Stata",
+		"stataRun"
+	],
+	"license": "MIT",
+	"__metadata": {
+		"id": "99daece2-f2e1-4e81-8c26-8e87da0e4e5c",
+		"publisherId": "f09cbd4e-859f-496c-b4d1-f8eb491f26c2",
+		"publisherDisplayName": "Yeaoh",
+		"targetPlatform": "undefined",
+		"isApplicationScoped": false,
+		"isPreReleaseVersion": false,
+		"hasPreReleaseVersion": false,
+		"installedTimestamp": 1739462128387,
+		"pinned": false,
+		"preRelease": false,
+		"source": "gallery",
+		"size": 975753
+	}
 }

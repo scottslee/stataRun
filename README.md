@@ -12,7 +12,7 @@ The following command and keyboard shortcut are implemented (crtl to be replace 
 - shift+ctrl+f: Run Frontward Lines ==> from first line till current line
 
 Settings derived from [stata-exec](https://github.com/kylebarron/stata-exec), which provide the same features for Atom.
-![run-command](./images/config.png)
+![run-command](https://github.com/poidstotal/stataRun/raw/master/./images/config.png)
 
 ## Requirements
 
@@ -67,5 +67,5 @@ Only tested with Mac Os so far. Please and try create issues if any. Feel free t
 
 Install as a normal vscode extension by searcing for stataRun in the vscode extension marketplace
 ## Release
-2.0.1
+2.0.3
   - Improvement for working on Windows and Linux
