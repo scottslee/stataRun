@@ -4,11 +4,12 @@ import os
 from pathlib import Path
 
 # --- Configuration ---
-# Skip block commands, 'preserve/restore' (for some reason 'preserve' doesn't register), and 'display' (will always show statement in output)
+# Skip loop commands, 'preserve/restore' (running 'preserve' through 'show' puts it out of scope for 'restore'), and 'display' (Stata will always show statement in output)
 FORBIDDEN_TO_PREFIX = {'if', 'else', 'foreach', 'forvalues', 'while', 'program', 'end', 'preserve', 'restore', 'disp', 'di', 'display'}
 # Look for the safelist in the same directory as this script
 SCRIPT_DIR = Path(__file__).resolve().parent
 ALLOWED_COMMAND_FILE = os.path.join(SCRIPT_DIR, "show_commands_safe_list.csv")
+BYPASS_WORDS = {'qui', 'quie', 'quiet', 'quietl', 'quietly', 'noi', 'nois', 'noisi', 'noisil', 'noisily', 'show '}
 
 # --- Load Safe First Word List ---
 def load_allowed_commands(ALLOWED_COMMAND_FILE):
@@ -26,7 +27,7 @@ ALLOWED_TO_PREFIX = load_allowed_commands(ALLOWED_COMMAND_FILE)
 ALLOWED_TO_PREFIX.add('qui')
 ALLOWED_TO_PREFIX.add('quietly')
 
-def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment):
+def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS):
     """
     Parses line and evaluates whether it can be echoed by `show` without error,
     considering block comment state.
@@ -65,7 +66,9 @@ def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment):
     # 4. Pass through lines containing braces OR /// anywhere
     if '{' in line or '}' in line or '///' in line:
         return (original_line_stripped, False, False) # Not prefixable, not in block comment
-
+        # test: pass these through
+        # return (original_line_stripped, True, False)
+    
     # --- Command Evaluation ---
     #new_line_stripped = original_line_stripped # Initialize new line to original line
     parts = original_line_stripped.split(None, 1)
@@ -74,7 +77,7 @@ def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment):
     command_to_check = first_word
 
     # 6. Check for 'qui'/'quietly' and already prefixed 'show'
-    if first_word in ['qui', 'quie', 'quiet', 'quietly', 'show ']:
+    if first_word in BYPASS_WORDS:
         if len(parts) > 1:
             # Get the actual command after 'qui'/'quietly'
             actual_command_parts = rest_of_line.split(None, 1)
@@ -97,8 +100,7 @@ def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment):
     # The state remains False as no new block comment started
     return (original_line_stripped, True, False)
 
-
-def preprocess_stata_code(input_code, ALLOWED_TO_PREFIX):
+def preprocess_stata_code(input_code, ALLOWED_TO_PREFIX, BYPASS_WORDS):
     output_lines = []
     show_program_definition = """
 capture program drop show
@@ -117,7 +119,7 @@ end
 
     for line in lines:
         # Pass current state to evaluate_line and get new line with any modifications + whether it's prefixable + next state
-        new_line_stripped, is_prefixable, in_block_comment = evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment)
+        new_line_stripped, is_prefixable, in_block_comment = evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS)
 
         if new_line_stripped is None:
             continue # Skip to next line
@@ -137,5 +139,5 @@ if __name__ == "__main__":
     input_code = sys.stdin.read()
     # Load safe list
     ALLOWED_TO_PREFIX = load_allowed_commands(ALLOWED_COMMAND_FILE)
-    processed_code = preprocess_stata_code(input_code, ALLOWED_TO_PREFIX)
+    processed_code = preprocess_stata_code(input_code, ALLOWED_TO_PREFIX, BYPASS_WORDS)
     print(processed_code)
