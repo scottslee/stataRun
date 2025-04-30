@@ -2,9 +2,12 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require('vscode');
-let fs = require('fs');
-let os = require('os');
 const sendCode = require('./sendCode');
+const child_process = require('child_process');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
 
 function saveToFile(code) {
     if (code) {
@@ -46,22 +49,49 @@ function activate(context) {
 
     // Use the console to output diagnostic information (console.log) and errors (console.error)
     // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "stata-run" is now active!');
+    console.log('Congratulations, your extension "stataRun" is now active!');
 
-    let runAll = vscode.commands.registerCommand('stataRun.runAll', function () {
-        // Run Full file
-        let editor = CheckEditor(vscode.window.activeTextEditor)
-        if (editor){
-            let code = editor.document.getText()
-            if (code.length > 0){
-                saveToFile(code)
+    // run all command
+    let runAllShow = vscode.commands.registerTextEditorCommand('stataRun.runAllShow', function (editor) {
+        // --- Define Script Path INSIDE command --- Added/Moved ---
+        const scriptDir = path.dirname(context.extensionPath); // context is available here
+        const fullPreprocessScriptPath = path.join(scriptDir, 'stataRun', 'preprocess_stata_for_show.py');
+        // --- End Define Script Path ---
+
+        vscode.commands.executeCommand('workbench.action.files.save');
+        var code = editor.document.getText();
+
+        // --- Preprocessing Step --- Added Block ---
+        let processedCode = code; // Default to original code if preprocessing fails
+        try {
+            // Check if script exists before running
+            if (!fs.existsSync(fullPreprocessScriptPath)) {
+                throw new Error(`Preprocessing script not found at ${fullPreprocessScriptPath}`);
             }
-            else {
-                ShowError()
-            }
+
+            console.log(`stataRunShow: Preprocessing with ${fullPreprocessScriptPath}`);
+            const pythonExecutable = '~/.ssl585/bin/python3'; // Or determine dynamically if needed
+            // Execute the python script synchronously, passing code via stdin
+            processedCode = child_process.execSync(`${pythonExecutable} "${fullPreprocessScriptPath}"`, {
+                input: code,
+                encoding: 'utf-8',
+                maxBuffer: 10 * 1024 * 1024 // Allow up to 10MB buffer (adjust if needed)
+            });
+            console.log(processedCode);
+            console.log('stataRunShow: Preprocessing successful.');
+        } catch (error) {
+            console.error('stataRunShow: Error during preprocessing:', error);
+            vscode.window.showErrorMessage(`stataRunShow Preprocessing Error: ${error.message}. Running original code instead.`);
+            processedCode = code; // Explicitly ensure original code is used on error
+            // Optional: uncomment below to prevent running original code on error
+            // return; 
         }
-        context.subscriptions.push(runAll);
+        // --- End Preprocessing Step ---
+
+        saveToFile(processedCode); // Use processedCode here
     });
+    
+    context.subscriptions.push(runAllShow); // Ensure runAllShow is pushed
 
     let runSelection = vscode.commands.registerCommand('stataRun.runSelection', function () {
         // Run Selection text
@@ -149,12 +179,14 @@ function activate(context) {
 
     });
 }
-exports.activate = activate;
-
 
 // this method is called when your extension is deactivated
 function deactivate() {
-    // this method is called when your extension is deactivated
+    // Clean up any resources or subscriptions
+    context.subscriptions.forEach(subscription => subscription.dispose());
 }
-exports.deactivate = deactivate;
 
+module.exports = {
+    activate,
+    deactivate
+};

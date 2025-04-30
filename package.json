@@ -12,7 +12,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:stataRun.runAll",
+		"onCommand:stataRun.runAllShow",
 		"onCommand:stataRun.runSelection",
 		"onCommand:stataRun.runCurrent",
 		"onCommand:stataRun.runDown",
@@ -22,8 +22,8 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "stataRun.runAll",
-				"title": "stataRun: All Lines"
+				"command": "stataRun.runAllShow",
+				"title": "stataRun: All Lines with Echo"
 			},
 			{
 				"command": "stataRun.runSelection",
@@ -92,7 +92,7 @@
 			{
 				"key": "shift+ctrl+a",
 				"mac": "shift+cmd+a",
-				"command": "stataRun.runAll",
+				"command": "stataRun.runAllShow",
 				"when": "editorTextFocus"
 			},
 			{
@@ -124,7 +124,7 @@
 			"editor/context": [
 				{
 					"when": "resourceLangId == stata",
-					"command": "stataRun.runAll",
+					"command": "stataRun.runAllShow",
 					"group": "stataRun"
 				},
 				{
