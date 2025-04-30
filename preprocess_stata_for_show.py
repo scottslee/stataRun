@@ -3,133 +3,46 @@ import sys
 import os
 from pathlib import Path
 
-# --- Configuration ---
-# Skip loop commands, 'preserve/restore' (running 'preserve' through 'show' puts it out of scope for 'restore'), and 'display' (Stata will always show statement in output)
-FORBIDDEN_TO_PREFIX = {'if', 'else', 'foreach', 'forvalues', 'while', 'program', 'end', 'preserve', 'restore', 'disp', 'di', 'display'}
-# Look for the safelist in the same directory as this script
-SCRIPT_DIR = Path(__file__).resolve().parent
-ALLOWED_COMMAND_FILE = os.path.join(SCRIPT_DIR, "show_commands_safe_list.csv")
-BYPASS_WORDS = {'qui', 'quie', 'quiet', 'quietl', 'quietly', 'noi', 'nois', 'noisi', 'noisil', 'noisily', 'show '}
+def evaluate_line(line):
 
-# --- Load Safe First Word List ---
-def load_allowed_commands(ALLOWED_COMMAND_FILE):
-    # Check that file exists
-    if not os.path.exists(ALLOWED_COMMAND_FILE):
-        print(f"Error: File {ALLOWED_COMMAND_FILE} does not exist.")
-        return set()
-
-    with open(ALLOWED_COMMAND_FILE, 'r') as file:
-        allowed_commands = file.read().splitlines()
-    return set(allowed_commands)
-
-ALLOWED_TO_PREFIX = load_allowed_commands(ALLOWED_COMMAND_FILE)
-# Manually add qui/quietly as allowed *triggers* for the special handling
-ALLOWED_TO_PREFIX.add('qui')
-ALLOWED_TO_PREFIX.add('quietly')
-
-def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS):
-    """
-    Parses line and evaluates whether it can be echoed by `show` without error,
-    considering block comment state.
-    Returns: (bool: is_prefixable, bool: next_in_block_comment_state, str: original_line_stripped)
-    """
-    original_line_stripped = line.strip() # Need original stripped for checks later and to return
-
-    # --- Block Comment Handling ---
-    if in_block_comment:
-        # We are already inside a block comment, look for the end
-        next_state = '*/' not in line # in_block_comment is True if no end comment found
-        return (line, False, next_state) # Never prefixable inside a block comment
-    elif '/*' in line:
-         # We are not inside a block comment, look for the start
-         start_comment_pos = line.find('/*')
-         end_comment_pos = line.find('*/', start_comment_pos + 2)
-         next_state = (end_comment_pos == -1) # True if '*/' is NOT found after '/*'
-         return (line, False, next_state) # Never prefix lines containing block comment markers
-    # --- End Block Comment Handling ---
-
-    # --- Existing Checks (run only if not starting/ending/inside a block comment) ---
-    # Use original_line_stripped for checks that need it
-
-    # 1. Skip empty lines
-    if not original_line_stripped:
-        return (None, False, False) # Not prefixable, not in block comment
-
-    # 2. Pass through lines with no leading whitespace, as these are first-level commands that automatically echoed
+    # If line is a first-level command, don't display it again since Stata will display it
     if not line.startswith(' '):
-        return (line, False, False) # Not prefixable, not in block comment
+        return (line)
 
-    # 3. Pass through basic comments (*, //) - block comments already handled
-    #if original_line_stripped.startswith(('*', '//')) or '///' in line:
-        #return (line, False, False) # Not prefixable, not in block comment
+    # Similarly, for 'display' commands, we don't have to display the command itself, since Stata will show the quoted string as output
+    # However, when processing 'display' command, Stata doesn't respect the leading whitespace before the word 'display', so the string
+    # ends up being flush left. So want to add the leading whitespace to the string in quotes as well as keep it in the line itself
+    leading_whitespace = line[:len(line) - len(line.lstrip())]
+    line_stripped = line.strip() # Need original stripped for checks later and to return
+    first_word = line_stripped.split()[0]
 
-    # 4. Pass through lines containing braces OR /// anywhere
-    #if '{' in line or '}' in line:
-        #return (line, False, False) # Not prefixable, not in block comment
-        # test: pass these through
-        # return (original_line_stripped, True, False)
-    
-    # --- Command Evaluation ---
-    parts = original_line_stripped.split(None, 1)
-    first_word = parts[0]
-    rest_of_line = parts[1].strip() if len(parts) > 1 else ""
-    command_to_check = first_word
+    # But we do want to move the whitespace before the 'display' command to within the quoted string, as this is the only way to indent the output
+    if first_word in ['di', 'dis', 'disp', 'displ', 'displa', 'display']:
+        # Find position of first quote
+        quote_pos = line_stripped.find('"')
+        if quote_pos != -1:
+            # Found a quote, so preserve all text up to and including the first quote it, then interpolate leading whitespace after it
+            pos_after_quote = quote_pos + 1
+            string_up_to_quote = line_stripped[:pos_after_quote]
+            string_after_quote = line_stripped[pos_after_quote:]
+            show_line = f"{leading_whitespace}{string_up_to_quote}{leading_whitespace}{string_after_quote}"
+    else:
+        # For all other lines, {line} already includes whitespace before the command, so display it as is
+        show_line = f"disp as input `\"{line}\"'\n{line}" # use `" and "' around disp string to avoid errors
+    return (show_line)
 
-    # 6. Check for 'qui'/'quietly' and already prefixed 'show'
-    if first_word in BYPASS_WORDS:
-        if len(parts) > 1:
-            # Get the actual command after 'qui'/'quietly'
-            actual_command_parts = rest_of_line.split(None, 1)
-            command_to_check = actual_command_parts[0]
-            if first_word == 'show ':
-                original_line_stripped = actual_command_parts[1].strip() # Remove 'show ' from original line if present
-        else:
-             return (line, False, False) # Line was just 'qui'/'quietly' or 'show'
-
-    # 7. Check command against allowed and forbidden lists
-    #if command_to_check in FORBIDDEN_TO_PREFIX:
-    #    return (line, False, False) # Forbidden
-
-    #if command_to_check not in ALLOWED_TO_PREFIX:
-    #     return (line, False, False) # Not explicitly allowed
-
-    # If we reach here, the command is allowed and not forbidden
-    # Return True for prefixable, and the the new line if modified (i.e., removal of 'snow ')
-    # Other formatting logic will be handled by the caller
-    # The state remains False as no new block comment started
-
-    # Try bypassing 'show' program and making change directly
-    leading_whitespace = line[:len(line) - len(line.lstrip())] # For returning new line later
-    new_line = leading_whitespace + original_line_stripped # currently, this is identical to original line in all cases except "show "
-    show_line = f"disp in red \`\"{new_line}\"\'\n{new_line}" # use `" and "' around disp string to avoid errors when command is disp ""
-    return (show_line, True, False)
-
-def preprocess_stata_code(input_code, ALLOWED_TO_PREFIX, BYPASS_WORDS):
+def preprocess_stata_code(input_code):
     output_lines = []
 
     lines = input_code.splitlines()
-    in_block_comment = False # State variable managed here
-
     for line in lines:
-        # Pass current state to evaluate_line and get new line with any modifications + whether it's prefixable + next state
-        new_line, is_prefixable, in_block_comment = evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS)
-
-        if new_line is None:
-            output_lines.append("")
-        else:
-            new_line_stripped = new_line.strip()
-            if new_line_stripped is None:
-                output_lines.append("")
-            else:
-                output_lines.append(new_line)
-
+        new_line = evaluate_line(line)
+        output_lines.append(new_line)
     return "\n".join(output_lines)
 
 # --- Main block to allow script execution --- 
 if __name__ == "__main__":
     # Read from stdin, write to stdout
     input_code = sys.stdin.read()
-    # Load safe list
-    ALLOWED_TO_PREFIX = load_allowed_commands(ALLOWED_COMMAND_FILE)
-    processed_code = preprocess_stata_code(input_code, ALLOWED_TO_PREFIX, BYPASS_WORDS)
+    processed_code = preprocess_stata_code(input_code)
     print(processed_code)
