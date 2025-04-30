@@ -39,13 +39,13 @@ def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS):
     if in_block_comment:
         # We are already inside a block comment, look for the end
         next_state = '*/' not in line # in_block_comment is True if no end comment found
-        return (original_line_stripped, False, next_state) # Never prefixable inside a block comment
+        return (line, False, next_state) # Never prefixable inside a block comment
     elif '/*' in line:
          # We are not inside a block comment, look for the start
          start_comment_pos = line.find('/*')
          end_comment_pos = line.find('*/', start_comment_pos + 2)
          next_state = (end_comment_pos == -1) # True if '*/' is NOT found after '/*'
-         return (original_line_stripped, False, next_state) # Never prefix lines containing block comment markers
+         return (line, False, next_state) # Never prefix lines containing block comment markers
     # --- End Block Comment Handling ---
 
     # --- Existing Checks (run only if not starting/ending/inside a block comment) ---
@@ -57,20 +57,19 @@ def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS):
 
     # 2. Pass through lines with no leading whitespace, as these are first-level commands that automatically echoed
     if not line.startswith(' '):
-        return (original_line_stripped, False, False) # Not prefixable, not in block comment
+        return (line, False, False) # Not prefixable, not in block comment
 
     # 3. Pass through basic comments (*, //) - block comments already handled
-    if original_line_stripped.startswith(('*', '//')):
-        return (original_line_stripped, False, False) # Not prefixable, not in block comment
+    #if original_line_stripped.startswith(('*', '//')) or '///' in line:
+        #return (line, False, False) # Not prefixable, not in block comment
 
     # 4. Pass through lines containing braces OR /// anywhere
-    if '{' in line or '}' in line or '///' in line:
-        return (original_line_stripped, False, False) # Not prefixable, not in block comment
+    #if '{' in line or '}' in line:
+        #return (line, False, False) # Not prefixable, not in block comment
         # test: pass these through
         # return (original_line_stripped, True, False)
     
     # --- Command Evaluation ---
-    #new_line_stripped = original_line_stripped # Initialize new line to original line
     parts = original_line_stripped.split(None, 1)
     first_word = parts[0]
     rest_of_line = parts[1].strip() if len(parts) > 1 else ""
@@ -85,51 +84,44 @@ def evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS):
             if first_word == 'show ':
                 original_line_stripped = actual_command_parts[1].strip() # Remove 'show ' from original line if present
         else:
-             return (original_line_stripped, False, False) # Line was just 'qui'/'quietly' or 'show'
+             return (line, False, False) # Line was just 'qui'/'quietly' or 'show'
 
     # 7. Check command against allowed and forbidden lists
-    if command_to_check in FORBIDDEN_TO_PREFIX:
-        return (original_line_stripped, False, False) # Forbidden
+    #if command_to_check in FORBIDDEN_TO_PREFIX:
+    #    return (line, False, False) # Forbidden
 
-    if command_to_check not in ALLOWED_TO_PREFIX:
-         return (original_line_stripped, False, False) # Not explicitly allowed
+    #if command_to_check not in ALLOWED_TO_PREFIX:
+    #     return (line, False, False) # Not explicitly allowed
 
     # If we reach here, the command is allowed and not forbidden
     # Return True for prefixable, and the the new line if modified (i.e., removal of 'snow ')
     # Other formatting logic will be handled by the caller
     # The state remains False as no new block comment started
-    return (original_line_stripped, True, False)
+
+    # Try bypassing 'show' program and making change directly
+    leading_whitespace = line[:len(line) - len(line.lstrip())] # For returning new line later
+    new_line = leading_whitespace + original_line_stripped # currently, this is identical to original line in all cases except "show "
+    show_line = f"disp in red \`\"{new_line}\"\'\n{new_line}" # use `" and "' around disp string to avoid errors when command is disp ""
+    return (show_line, True, False)
 
 def preprocess_stata_code(input_code, ALLOWED_TO_PREFIX, BYPASS_WORDS):
     output_lines = []
-    show_program_definition = """
-capture program drop show
-program define show
-    if `"`0'"' != "" {
-        display in red `"Nested: `0'"'
-        `0'
-    }
-end
-"""
-    output_lines.extend(show_program_definition.strip().split('\n'))
-    output_lines.append("")
 
     lines = input_code.splitlines()
     in_block_comment = False # State variable managed here
 
     for line in lines:
         # Pass current state to evaluate_line and get new line with any modifications + whether it's prefixable + next state
-        new_line_stripped, is_prefixable, in_block_comment = evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS)
+        new_line, is_prefixable, in_block_comment = evaluate_line(line, ALLOWED_TO_PREFIX, in_block_comment, BYPASS_WORDS)
 
-        if new_line_stripped is None:
-            continue # Skip to next line
-        elif is_prefixable:
-            # New line exists and is prefixable, prefix with "show"
-            leading_whitespace = line[:len(line) - len(line.lstrip())]
-            output_lines.append(f"{leading_whitespace}show {new_line_stripped}")
+        if new_line is None:
+            output_lines.append("")
         else:
-            # Line is not prefixable, pass through original line
-            output_lines.append(line)
+            new_line_stripped = new_line.strip()
+            if new_line_stripped is None:
+                output_lines.append("")
+            else:
+                output_lines.append(new_line)
 
     return "\n".join(output_lines)
 
