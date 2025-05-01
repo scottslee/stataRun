@@ -103,10 +103,10 @@ module.exports = {
       return this.sendXQuartz(text);
     }
 
-    if (text.length > 8192) {
-      this.error('Code to send must be <= 8192 characters');
-      return;
-    }
+    //if (text.length > 8192) {
+    //  this.error('Code to send must be <= 8192 characters');
+    //  return;
+    //}
 
     const focusWindow = config.get('focusWindow');
     var cmd = '';

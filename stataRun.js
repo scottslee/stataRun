@@ -75,7 +75,7 @@ function activate(context) {
             processedCode = child_process.execSync(`${pythonExecutable} "${fullPreprocessScriptPath}"`, {
                 input: code,
                 encoding: 'utf-8',
-                maxBuffer: 10 * 1024 * 1024 // Allow up to 10MB buffer (adjust if needed)
+                maxBuffer: 100 * 1024 * 1024 // Allow up to 10MB buffer (adjust if needed) -> 10 -> 100 *1024 *1024
             });
             console.log(processedCode);
             console.log('stataRunShow: Preprocessing successful.');
